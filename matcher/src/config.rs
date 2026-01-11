@@ -26,6 +26,8 @@ pub struct Config {
     /// match. For a full fzf-like fuzzy matcher/picker word segmentation and
     /// explicit prefix literals should be used instead.
     pub prefer_prefix: bool,
+    /// Whether to sort results based on score when pattern isn't empty.
+    pub sort_results: bool,
 }
 
 impl Config {
@@ -40,6 +42,7 @@ impl Config {
             normalize: true,
             ignore_case: true,
             prefer_prefix: false,
+            sort_results: true,
         }
     };
 }
@@ -65,6 +68,12 @@ impl Config {
         }
         self.bonus_boundary_white = BONUS_BOUNDARY;
         self.initial_char_class = CharClass::Delimiter;
+        self
+    }
+
+    /// Configures the matcher to never sort results based on score.
+    pub fn no_sort(mut self) -> Self {
+        self.sort_results = false;
         self
     }
 }
