@@ -1,4 +1,5 @@
 use std::cell::UnsafeCell;
+use std::cmp::Ordering as CmpOrdering;
 use std::mem::take;
 use std::sync::atomic::{self, AtomicBool, AtomicU32};
 use std::sync::Arc;
@@ -9,7 +10,7 @@ use rayon::{prelude::*, ThreadPool};
 
 use crate::par_sort::par_quicksort;
 use crate::pattern::{self, MultiPattern};
-use crate::{boxcar, Match};
+use crate::{boxcar, Match, SortStrategy};
 
 struct Matchers(Box<[UnsafeCell<nucleo_matcher::Matcher>]>);
 
@@ -29,7 +30,7 @@ pub(crate) struct Worker<T: Sync + Send + 'static> {
     matchers: Matchers,
     pub(crate) matches: Vec<Match>,
     pub(crate) pattern: MultiPattern,
-    pub(crate) sort_results: bool,
+    pub(crate) sort_strategy: SortStrategy<T>,
     pub(crate) reverse_items: bool,
     pub(crate) canceled: Arc<AtomicBool>,
     pub(crate) should_notify: Arc<AtomicBool>,
@@ -49,8 +50,15 @@ impl<T: Sync + Send + 'static> Worker<T> {
             matcher.get_mut().config = config.clone();
         }
     }
+    pub(crate) fn set_sort_strategy(&mut self, strategy: SortStrategy<T>) {
+        self.sort_strategy = strategy;
+    }
     pub(crate) fn sort_results(&mut self, sort_results: bool) {
-        self.sort_results = sort_results;
+        self.sort_strategy = if sort_results {
+            SortStrategy::Score
+        } else {
+            SortStrategy::None
+        };
     }
     pub(crate) fn reverse_items(&mut self, reverse_items: bool) {
         self.reverse_items = reverse_items;
@@ -72,6 +80,11 @@ impl<T: Sync + Send + 'static> Worker<T> {
         let matchers = (0..worker_threads)
             .map(|_| UnsafeCell::new(nucleo_matcher::Matcher::new(config.clone())))
             .collect();
+        let sort_strategy = if config.sort_results {
+            SortStrategy::Score
+        } else {
+            SortStrategy::None
+        };
         let worker = Worker {
             running: false,
             matchers: Matchers(matchers),
@@ -79,7 +92,7 @@ impl<T: Sync + Send + 'static> Worker<T> {
             matches: Vec::new(),
             // just a placeholder
             pattern: MultiPattern::new(cols as usize),
-            sort_results: config.sort_results,
+            sort_strategy,
             reverse_items: false,
             canceled: Arc::new(AtomicBool::new(false)),
             should_notify: Arc::new(AtomicBool::new(false)),
@@ -227,64 +240,84 @@ impl<T: Sync + Send + 'static> Worker<T> {
     }
 
     unsafe fn sort_matches(&mut self) -> bool {
-        if self.sort_results {
-            par_quicksort(
-                &mut self.matches,
-                |match1, match2| {
-                    if match1.score != match2.score {
-                        return match1.score > match2.score;
-                    }
-                    if match1.idx == u32::MAX {
-                        return false;
-                    }
-                    if match2.idx == u32::MAX {
-                        return true;
-                    }
-                    // the tie breaker is comparatively rarely needed so we keep it
-                    // in a branch especially because we need to access the items
-                    // array here which involves some pointer chasing
-                    let item1 = self.items.get_unchecked(match1.idx);
-                    let item2 = &self.items.get_unchecked(match2.idx);
-                    let len1: u32 = item1
-                        .matcher_columns
-                        .iter()
-                        .map(|haystack| haystack.len() as u32)
-                        .sum();
-                    let len2 = item2
-                        .matcher_columns
-                        .iter()
-                        .map(|haystack| haystack.len() as u32)
-                        .sum();
-                    if len1 == len2 {
+        match &self.sort_strategy {
+            SortStrategy::Score => {
+                par_quicksort(
+                    &mut self.matches,
+                    |match1, match2| {
+                        if match1.score != match2.score {
+                            return match1.score > match2.score;
+                        }
+                        if match1.idx == u32::MAX {
+                            return false;
+                        }
+                        if match2.idx == u32::MAX {
+                            return true;
+                        }
+                        // the tie breaker is comparatively rarely needed so we keep it
+                        // in a branch especially because we need to access the items
+                        // array here which involves some pointer chasing
+                        let item1 = self.items.get_unchecked(match1.idx);
+                        let item2 = &self.items.get_unchecked(match2.idx);
+                        let len1: u32 = item1
+                            .matcher_columns
+                            .iter()
+                            .map(|haystack| haystack.len() as u32)
+                            .sum();
+                        let len2 = item2
+                            .matcher_columns
+                            .iter()
+                            .map(|haystack| haystack.len() as u32)
+                            .sum();
+                        if len1 == len2 {
+                            if self.reverse_items {
+                                match2.idx < match1.idx
+                            } else {
+                                match1.idx < match2.idx
+                            }
+                        } else {
+                            len1 < len2
+                        }
+                    },
+                    &self.canceled,
+                )
+            }
+            SortStrategy::None => {
+                par_quicksort(
+                    &mut self.matches,
+                    |match1, match2| {
+                        if match1.idx == u32::MAX {
+                            return false;
+                        }
+                        if match2.idx == u32::MAX {
+                            return true;
+                        }
                         if self.reverse_items {
                             match2.idx < match1.idx
                         } else {
                             match1.idx < match2.idx
                         }
-                    } else {
-                        len1 < len2
-                    }
-                },
-                &self.canceled,
-            )
-        } else {
-            par_quicksort(
-                &mut self.matches,
-                |match1, match2| {
-                    if match1.idx == u32::MAX {
-                        return false;
-                    }
-                    if match2.idx == u32::MAX {
-                        return true;
-                    }
-                    if self.reverse_items {
-                        match2.idx < match1.idx
-                    } else {
-                        match1.idx < match2.idx
-                    }
-                },
-                &self.canceled,
-            )
+                    },
+                    &self.canceled,
+                )
+            }
+            SortStrategy::Custom(compare_fn) => {
+                par_quicksort(
+                    &mut self.matches,
+                    |match1, match2| {
+                        if match1.idx == u32::MAX {
+                            return false;
+                        }
+                        if match2.idx == u32::MAX {
+                            return true;
+                        }
+                        let item1 = self.items.get_unchecked(match1.idx);
+                        let item2 = self.items.get_unchecked(match2.idx);
+                        compare_fn(match1, item1, match2, item2) == CmpOrdering::Less
+                    },
+                    &self.canceled,
+                )
+            }
         }
     }
 

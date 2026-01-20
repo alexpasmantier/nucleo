@@ -26,6 +26,7 @@ level crate also need better documentation and will likely see a few minor API
 changes in the future.
 
 */
+use std::cmp::Ordering as CmpOrdering;
 use std::ops::{Bound, RangeBounds};
 use std::sync::atomic::{self, AtomicBool, Ordering};
 use std::sync::Arc;
@@ -45,6 +46,32 @@ mod worker;
 
 #[cfg(test)]
 mod tests;
+
+/// Comparison function for custom sorting of match results.
+pub type SortFn<T> =
+    Box<dyn Fn(&Match, Item<'_, T>, &Match, Item<'_, T>) -> CmpOrdering + Send + Sync>;
+
+/// Strategy for sorting match results.
+#[derive(Default)]
+pub enum SortStrategy<T: Sync + Send + 'static> {
+    /// No sorting by score; items ordered by index (insertion order).
+    None,
+    /// Sort by score (desc), then length (asc), then index.
+    #[default]
+    Score,
+    /// Custom comparison function.
+    Custom(SortFn<T>),
+}
+
+impl<T: Sync + Send + 'static> std::fmt::Debug for SortStrategy<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SortStrategy::None => write!(f, "SortStrategy::None"),
+            SortStrategy::Score => write!(f, "SortStrategy::Score"),
+            SortStrategy::Custom(_) => write!(f, "SortStrategy::Custom(...)"),
+        }
+    }
+}
 
 /// A match candidate stored in a [`Nucleo`] worker.
 pub struct Item<'a, T> {
@@ -376,14 +403,17 @@ impl<T: Sync + Send + 'static> Nucleo<T> {
         self.worker.lock().update_config(config)
     }
 
-    // Set whether the matcher should sort search results by score after
-    // matching. Defaults to true.
+    /// Set whether to sort results by score. Defaults to true.
     pub fn sort_results(&mut self, sort_results: bool) {
         self.worker.lock().sort_results(sort_results)
     }
 
-    // Set whether the matcher should reverse the order of the input.
-    // Defaults to false.
+    /// Set the strategy for sorting match results.
+    pub fn set_sort_strategy(&mut self, strategy: SortStrategy<T>) {
+        self.worker.lock().set_sort_strategy(strategy)
+    }
+
+    /// Set whether to reverse the input order. Defaults to false.
     pub fn reverse_items(&mut self, reverse_items: bool) {
         self.worker.lock().reverse_items(reverse_items)
     }
