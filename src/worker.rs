@@ -189,6 +189,14 @@ impl<T: Sync + Send + 'static> Worker<T> {
         if self.pattern.is_empty() {
             self.reset_matches();
             self.process_new_items_trivial();
+            // Apply custom sort strategy even for empty patterns (e.g., for frecency sorting)
+            if matches!(self.sort_strategy, SortStrategy::Custom(_)) {
+                let canceled = self.sort_matches();
+                if canceled {
+                    self.was_canceled = true;
+                    return;
+                }
+            }
             if self.should_notify.load(atomic::Ordering::Relaxed) {
                 (self.notify)();
             }
