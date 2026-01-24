@@ -70,9 +70,13 @@ fn sort_strategy_score_default() {
     );
     drop(injector);
 
-    nucleo
-        .pattern
-        .reparse(0, "ab", CaseMatching::Ignore, crate::pattern::Normalization::Smart, false);
+    nucleo.pattern.reparse(
+        0,
+        "ab",
+        CaseMatching::Ignore,
+        crate::pattern::Normalization::Smart,
+        false,
+    );
 
     wait_for_nucleo(&mut nucleo);
 
@@ -88,7 +92,7 @@ fn sort_strategy_score_default() {
 #[test]
 fn sort_strategy_none_preserves_order() {
     let mut nucleo: Nucleo<TestItem> = Nucleo::new(Config::DEFAULT, Arc::new(|| ()), Some(1), 1);
-    nucleo.set_sort_strategy(SortStrategy::None);
+    nucleo.set_sort_strategy(SortStrategy::Index);
 
     let injector = nucleo.injector();
     injector.push(
@@ -114,9 +118,13 @@ fn sort_strategy_none_preserves_order() {
     );
     drop(injector);
 
-    nucleo
-        .pattern
-        .reparse(0, "ab", CaseMatching::Ignore, crate::pattern::Normalization::Smart, false);
+    nucleo.pattern.reparse(
+        0,
+        "ab",
+        CaseMatching::Ignore,
+        crate::pattern::Normalization::Smart,
+        false,
+    );
 
     wait_for_nucleo(&mut nucleo);
 
@@ -161,9 +169,13 @@ fn sort_strategy_custom() {
     );
     drop(injector);
 
-    nucleo
-        .pattern
-        .reparse(0, "ab", CaseMatching::Ignore, crate::pattern::Normalization::Smart, false);
+    nucleo.pattern.reparse(
+        0,
+        "ab",
+        CaseMatching::Ignore,
+        crate::pattern::Normalization::Smart,
+        false,
+    );
 
     wait_for_nucleo(&mut nucleo);
 
@@ -214,9 +226,13 @@ fn sort_strategy_custom_score_then_priority() {
     );
     drop(injector);
 
-    nucleo
-        .pattern
-        .reparse(0, "ab", CaseMatching::Ignore, crate::pattern::Normalization::Smart, false);
+    nucleo.pattern.reparse(
+        0,
+        "ab",
+        CaseMatching::Ignore,
+        crate::pattern::Normalization::Smart,
+        false,
+    );
 
     wait_for_nucleo(&mut nucleo);
 
@@ -253,9 +269,13 @@ fn sort_results_bool_backwards_compat() {
     );
     drop(injector);
 
-    nucleo
-        .pattern
-        .reparse(0, "ab", CaseMatching::Ignore, crate::pattern::Normalization::Smart, false);
+    nucleo.pattern.reparse(
+        0,
+        "ab",
+        CaseMatching::Ignore,
+        crate::pattern::Normalization::Smart,
+        false,
+    );
 
     wait_for_nucleo(&mut nucleo);
     let items: Vec<_> = nucleo
@@ -285,9 +305,13 @@ fn sort_results_bool_backwards_compat() {
     );
     drop(injector);
 
-    nucleo
-        .pattern
-        .reparse(0, "ab", CaseMatching::Ignore, crate::pattern::Normalization::Smart, false);
+    nucleo.pattern.reparse(
+        0,
+        "ab",
+        CaseMatching::Ignore,
+        crate::pattern::Normalization::Smart,
+        false,
+    );
 
     wait_for_nucleo(&mut nucleo);
     let items: Vec<_> = nucleo
@@ -320,9 +344,13 @@ fn sort_strategy_switch_at_runtime() {
     );
     drop(injector);
 
-    nucleo
-        .pattern
-        .reparse(0, "ab", CaseMatching::Ignore, crate::pattern::Normalization::Smart, false);
+    nucleo.pattern.reparse(
+        0,
+        "ab",
+        CaseMatching::Ignore,
+        crate::pattern::Normalization::Smart,
+        false,
+    );
 
     wait_for_nucleo(&mut nucleo);
     let items: Vec<_> = nucleo

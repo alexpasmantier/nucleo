@@ -57,7 +57,7 @@ impl<T: Sync + Send + 'static> Worker<T> {
         self.sort_strategy = if sort_results {
             SortStrategy::Score
         } else {
-            SortStrategy::None
+            SortStrategy::Index
         };
     }
     pub(crate) fn reverse_items(&mut self, reverse_items: bool) {
@@ -83,7 +83,7 @@ impl<T: Sync + Send + 'static> Worker<T> {
         let sort_strategy = if config.sort_results {
             SortStrategy::Score
         } else {
-            SortStrategy::None
+            SortStrategy::Index
         };
         let worker = Worker {
             running: false,
@@ -282,42 +282,38 @@ impl<T: Sync + Send + 'static> Worker<T> {
                     &self.canceled,
                 )
             }
-            SortStrategy::None => {
-                par_quicksort(
-                    &mut self.matches,
-                    |match1, match2| {
-                        if match1.idx == u32::MAX {
-                            return false;
-                        }
-                        if match2.idx == u32::MAX {
-                            return true;
-                        }
-                        if self.reverse_items {
-                            match2.idx < match1.idx
-                        } else {
-                            match1.idx < match2.idx
-                        }
-                    },
-                    &self.canceled,
-                )
-            }
-            SortStrategy::Custom(compare_fn) => {
-                par_quicksort(
-                    &mut self.matches,
-                    |match1, match2| {
-                        if match1.idx == u32::MAX {
-                            return false;
-                        }
-                        if match2.idx == u32::MAX {
-                            return true;
-                        }
-                        let item1 = self.items.get_unchecked(match1.idx);
-                        let item2 = self.items.get_unchecked(match2.idx);
-                        compare_fn(match1, item1, match2, item2) == CmpOrdering::Less
-                    },
-                    &self.canceled,
-                )
-            }
+            SortStrategy::Index => par_quicksort(
+                &mut self.matches,
+                |match1, match2| {
+                    if match1.idx == u32::MAX {
+                        return false;
+                    }
+                    if match2.idx == u32::MAX {
+                        return true;
+                    }
+                    if self.reverse_items {
+                        match2.idx < match1.idx
+                    } else {
+                        match1.idx < match2.idx
+                    }
+                },
+                &self.canceled,
+            ),
+            SortStrategy::Custom(compare_fn) => par_quicksort(
+                &mut self.matches,
+                |match1, match2| {
+                    if match1.idx == u32::MAX {
+                        return false;
+                    }
+                    if match2.idx == u32::MAX {
+                        return true;
+                    }
+                    let item1 = self.items.get_unchecked(match1.idx);
+                    let item2 = self.items.get_unchecked(match2.idx);
+                    compare_fn(match1, item1, match2, item2) == CmpOrdering::Less
+                },
+                &self.canceled,
+            ),
         }
     }
 

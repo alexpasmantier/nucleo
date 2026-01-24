@@ -54,8 +54,8 @@ pub type SortFn<T> =
 /// Strategy for sorting match results.
 #[derive(Default)]
 pub enum SortStrategy<T: Sync + Send + 'static> {
-    /// No sorting by score; items ordered by index (insertion order).
-    None,
+    /// Sort items by index.
+    Index,
     /// Sort by score (desc), then length (asc), then index.
     #[default]
     Score,
@@ -66,7 +66,7 @@ pub enum SortStrategy<T: Sync + Send + 'static> {
 impl<T: Sync + Send + 'static> std::fmt::Debug for SortStrategy<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            SortStrategy::None => write!(f, "SortStrategy::None"),
+            SortStrategy::Index => write!(f, "SortStrategy::None"),
             SortStrategy::Score => write!(f, "SortStrategy::Score"),
             SortStrategy::Custom(_) => write!(f, "SortStrategy::Custom(...)"),
         }
