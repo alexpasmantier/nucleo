@@ -8,7 +8,7 @@ version = "0.1.0"
 dependencies = [
  "brunch",
  "fuzzy-matcher",
- "nucleo",
+ "television-nucleo",
  "walkdir",
 ]
 
@@ -97,26 +97,9 @@ dependencies = [
 
 [[package]]
 name = "memchr"
-version = "2.7.4"
+version = "2.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "78ca9ab1a0babb1e7d5695e3530886289c18cf2f87ec19a575a0abdce112e3a3"
-
-[[package]]
-name = "nucleo"
-version = "0.5.0"
-dependencies = [
- "nucleo-matcher",
- "parking_lot",
- "rayon",
-]
-
-[[package]]
-name = "nucleo-matcher"
-version = "0.3.1"
-dependencies = [
- "memchr",
- "unicode-segmentation",
-]
+checksum = "f8ca58f447f06ed17d5fc4043ce1b10dd205e060fb3ce5b979b8ed8e59ff3f79"
 
 [[package]]
 name = "once_cell"
@@ -196,6 +179,23 @@ name = "smallvec"
 version = "1.13.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3c5e1a9a646d36c3599cd173a41282daf47c44583ad367b8e6837255952e5c67"
+
+[[package]]
+name = "television-nucleo"
+version = "0.5.0"
+dependencies = [
+ "parking_lot",
+ "rayon",
+ "television-nucleo-matcher",
+]
+
+[[package]]
+name = "television-nucleo-matcher"
+version = "0.3.1"
+dependencies = [
+ "memchr",
+ "unicode-segmentation",
+]
 
 [[package]]
 name = "thread_local"
