@@ -387,3 +387,39 @@ fn sort_strategy_switch_at_runtime() {
         .collect();
     assert_eq!(items[0], "aXXXb");
 }
+
+/// `Some(0)` worker threads must not blow up.
+///
+/// rayon reads `num_threads(0)` as "use the default" and still builds a pool
+/// with real worker threads, so sizing the per-thread matchers from the
+/// requested count left `Matchers::get` indexing an empty slice by rayon
+/// thread index, panicking on the first match pass.
+///
+/// Callers reach this by deriving a thread count that saturates to zero on
+/// machines with few cores (see alexpasmantier/television#1139).
+#[test]
+fn zero_worker_threads_still_matches() {
+    let mut nucleo: Nucleo<&str> = Nucleo::new(Config::DEFAULT, Arc::new(|| ()), Some(0), 1);
+
+    let injector = nucleo.injector();
+    for name in ["git status", "git commit", "cargo build"] {
+        injector.push(name, |item, cols| cols[0] = (*item).into());
+    }
+    nucleo.pattern.reparse(
+        0,
+        "git",
+        CaseMatching::Ignore,
+        crate::pattern::Normalization::Smart,
+        false,
+    );
+
+    wait_for_nucleo(&mut nucleo);
+    let items: Vec<_> = nucleo
+        .snapshot()
+        .matched_items(..)
+        .map(|i| *i.data)
+        .collect();
+    assert_eq!(items.len(), 2);
+    assert!(items.contains(&"git status"));
+    assert!(items.contains(&"git commit"));
+}

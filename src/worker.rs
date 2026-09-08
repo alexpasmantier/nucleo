@@ -77,7 +77,12 @@ impl<T: Sync + Send + 'static> Worker<T> {
             .num_threads(worker_threads)
             .build()
             .expect("creating threadpool failed");
-        let matchers = (0..worker_threads)
+        // NOTE: rayon reads `num_threads(0)` as "use the default", so the pool
+        // it built may hold more threads than we asked for. Size the matchers
+        // from the pool itself: `Matchers::get` indexes them by rayon thread
+        // index, so anything smaller is an out of bounds panic on the first
+        // match pass.
+        let matchers = (0..pool.current_num_threads())
             .map(|_| UnsafeCell::new(nucleo_matcher::Matcher::new(config.clone())))
             .collect();
         let sort_strategy = if config.sort_results {
